@@ -1,0 +1,6 @@
+{
+  "name": "Wayanad Ghat Traffic Live",
+  "description": "Live traffic updates, congestion status, curve-by-curve reports, and expected clearance times for the Wayanad Churam (Thamarassery Ghat road).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
