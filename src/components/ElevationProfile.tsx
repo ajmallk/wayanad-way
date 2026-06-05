@@ -75,27 +75,27 @@ export default function ElevationProfile({
   };
 
   return (
-    <div id="elevation-altimeter-deck" className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden relative">
+    <div id="elevation-altimeter-deck" className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden relative">
       {/* Background Decor */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:100%_25px] opacity-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:100%_25px] opacity-20 pointer-events-none" />
       
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 relative z-5">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-indigo-400" />
-          <h3 className="text-xs font-bold text-white font-display tracking-wide uppercase">Vertical Altimeter Profile</h3>
+          <TrendingUp className="w-4 h-4 text-indigo-600" />
+          <h3 className="text-xs font-bold text-slate-900 font-display tracking-wide uppercase">Vertical Altimeter Profile</h3>
         </div>
         <span className="text-[9px] font-mono font-bold text-slate-500">
           NH 766 Altitude Gradient (75m ➔ 720m)
         </span>
       </div>
 
-      <div className="relative h-[155px] bg-slate-950/60 rounded-xl border border-slate-850 flex items-center justify-center p-1 overflow-visible">
+      <div className="relative h-[155px] bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center p-1 overflow-visible">
         <svg viewBox={`0 0 ${graphWidth} ${graphHeight}`} className="w-full h-full select-none overflow-visible">
           <defs>
             {/* Soft linear gradient for the mountain filling */}
             <linearGradient id="curveGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.01" />
+              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.14" />
+              <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.00" />
             </linearGradient>
             {/* Ambient indicator glow */}
             <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
@@ -105,11 +105,11 @@ export default function ElevationProfile({
           </defs>
 
           {/* Dotted helper lines for alt levels */}
-          <line x1={paddingX} y1={paddingY} x2={graphWidth - paddingX} y2={paddingY} stroke="white" strokeOpacity="0.04" strokeDasharray="3,3" />
-          <text x={graphWidth - paddingX - 10} y={paddingY + 11} className="fill-slate-600 font-mono text-[8px] text-right">Summit Lakkidi (700m)</text>
+          <line x1={paddingX} y1={paddingY} x2={graphWidth - paddingX} y2={paddingY} stroke="#0f172a" strokeOpacity="0.05" strokeDasharray="3,3" />
+          <text x={graphWidth - paddingX - 10} y={paddingY + 11} className="fill-slate-500 font-mono text-[8px] text-right font-semibold">Summit Lakkidi (700m)</text>
 
-          <line x1={paddingX} y1={(paddingY + graphHeight - paddingY)/2} x2={graphWidth - paddingX} y2={(paddingY + graphHeight - paddingY)/2} stroke="white" strokeOpacity="0.04" strokeDasharray="3,3" />
-          <text x={graphWidth - paddingX - 10} y={(paddingY + graphHeight - paddingY)/2 + 11} className="fill-slate-600 font-mono text-[8px]">Midway pass (400m)</text>
+          <line x1={paddingX} y1={(paddingY + graphHeight - paddingY)/2} x2={graphWidth - paddingX} y2={(paddingY + graphHeight - paddingY)/2} stroke="#0f172a" strokeOpacity="0.05" strokeDasharray="3,3" />
+          <text x={graphWidth - paddingX - 10} y={(paddingY + graphHeight - paddingY)/2 + 11} className="fill-slate-500 font-mono text-[8px] font-semibold">Midway pass (400m)</text>
 
           {/* Solid base mountain filled silhouette */}
           <path
@@ -125,7 +125,7 @@ export default function ElevationProfile({
             stroke="#6366f1"
             strokeWidth="2.5"
             strokeLinecap="round"
-            style={{ filter: 'drop-shadow(0px 4px 6px rgba(99, 102, 241, 0.35))' }}
+            style={{ filter: 'drop-shadow(0px 3px 4px rgba(99, 102, 241, 0.2))' }}
             className="transition-all duration-300"
           />
 
@@ -170,7 +170,7 @@ export default function ElevationProfile({
                   cy={y}
                   r={isSelected ? "5" : "3.5"}
                   className={`${nodeClr} transition-all duration-300`}
-                  stroke={isSelected ? "#ffffff" : "rgba(15, 23, 42, 0.4)"}
+                  stroke={isSelected ? "#ffffff" : "rgba(15, 23, 42, 0.2)"}
                   strokeWidth={isSelected ? "1.5" : "1"}
                   style={{ filter: isSelected ? 'url(#neonGlow)' : 'none' }}
                 />
@@ -184,15 +184,15 @@ export default function ElevationProfile({
                       width="50"
                       height="14"
                       rx="3"
-                      fill="rgba(15, 23, 42, 0.9)"
-                      stroke={isSelected ? "#6366f1" : "rgba(255,255,255,0.06)"}
+                      fill="#ffffff"
+                      stroke={isSelected ? "#6366f1" : "rgba(15, 23, 42, 0.1)"}
                       strokeWidth="0.5"
                     />
                     <text
                       x="0"
                       y="-2"
                       textAnchor="middle"
-                      className="fill-slate-200 font-mono text-[8px] font-bold"
+                      className="fill-slate-800 font-mono text-[8px] font-extrabold"
                     >
                       {loc.elevation}m
                     </text>
@@ -205,7 +205,7 @@ export default function ElevationProfile({
                     x={x}
                     y={y + 11}
                     textAnchor="middle"
-                    className="fill-slate-500 font-mono text-[7px] group-hover:fill-slate-300 transition-colors"
+                    className="fill-slate-500 font-mono text-[7px] group-hover:fill-slate-800 transition-colors font-semibold"
                   >
                     H{loc.hairpinNumber}
                   </text>
@@ -220,7 +220,7 @@ export default function ElevationProfile({
                       width="90"
                       height="13"
                       rx="3"
-                      fill="#0f172a"
+                      fill="#1e1b4b"
                       stroke="#4f46e5"
                       strokeWidth="0.5"
                     />
@@ -228,7 +228,7 @@ export default function ElevationProfile({
                       x="0"
                       y="10"
                       textAnchor="middle"
-                      className="fill-indigo-300 font-mono text-[8px] font-extrabold truncate"
+                      className="fill-indigo-100 font-mono text-[8px] font-extrabold truncate"
                     >
                       {loc.name.split(' (')[0]}
                     </text>
@@ -241,7 +241,7 @@ export default function ElevationProfile({
         </svg>
 
         {/* Legend float */}
-        <div className="absolute bottom-2 left-3 flex gap-2.5 bg-slate-950/80 p-1 px-2 border border-slate-900 rounded text-[8px] font-semibold font-mono text-slate-550 pointer-events-none">
+        <div className="absolute bottom-2 left-3 flex gap-2.5 bg-white/95 p-1 px-2 border border-slate-205 rounded text-[8px] font-bold font-mono text-slate-600 pointer-events-none shadow-xxs">
           <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Clear</span>
           <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Slow</span>
           <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-orange-500" /> Heavy</span>

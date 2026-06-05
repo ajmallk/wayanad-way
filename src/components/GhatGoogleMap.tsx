@@ -59,7 +59,7 @@ export default function GhatGoogleMap({
 
   return (
     <APIProvider apiKey={apiKey} version="weekly">
-      <div id="google-map-panel" className="relative p-0 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden h-[540px] flex flex-col justify-between">
+      <div id="google-map-panel" className="relative p-0 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden h-[540px] flex flex-col justify-between">
         
         {/* Core Map Stage */}
         <div className="w-full flex-1 relative min-h-[480px]">
@@ -138,34 +138,34 @@ export default function GhatGoogleMap({
           </Map>
 
           {/* Quick HUD Overlay */}
-          <div className="absolute top-3 left-3 z-10 glass-panel shadow-md p-1.5 px-3 rounded-lg text-slate-800 text-xxs font-semibold flex items-center gap-1.5 pointer-events-none">
+          <div className="absolute top-3 left-3 z-10 bg-white/95 backdrop-blur-md shadow-sm border border-slate-200 p-1.5 px-3 rounded-lg text-slate-800 text-xxs font-semibold flex items-center gap-1.5 pointer-events-none">
             <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             <span>Google Maps Engine API Loaded</span>
           </div>
         </div>
 
         {/* Legend strip */}
-        <div className="p-3 bg-slate-950/95 border-t border-slate-800 flex justify-between items-center text-xs relative z-10">
-          <div className="flex items-center text-slate-400 gap-1.5">
-            <Navigation className="w-3.5 h-3.5 rotate-45 text-indigo-400" />
-            <span className="font-mono text-xxs">Live Pin Overlay Layer</span>
+        <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center text-xs relative z-10 font-sans">
+          <div className="flex items-center text-slate-600 gap-1.5">
+            <Navigation className="w-3.5 h-3.5 rotate-45 text-indigo-600" />
+            <span className="font-mono text-xxs uppercase tracking-wide font-bold">Live Pin Overlay Layer</span>
           </div>
           <div className="flex gap-3">
             <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#10b981' }} />
-              <span className="text-[10px] text-slate-400 font-semibold font-mono">Clear</span>
+              <span className="h-2 w-2 rounded-full shadow-sm" style={{ backgroundColor: '#10b981' }} />
+              <span className="text-[10px] text-slate-600 font-bold font-mono">Clear</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
-              <span className="text-[10px] text-slate-400 font-semibold font-mono">Slow</span>
+              <span className="h-2 w-2 rounded-full shadow-sm" style={{ backgroundColor: '#f59e0b' }} />
+              <span className="text-[10px] text-slate-600 font-bold font-mono">Slow</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#f97316' }} />
-              <span className="text-[10px] text-slate-400 font-semibold font-mono">Heavy</span>
+              <span className="h-2 w-2 rounded-full shadow-sm" style={{ backgroundColor: '#f97316' }} />
+              <span className="text-[10px] text-slate-600 font-bold font-mono">Heavy</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full animate-pulse" style={{ backgroundColor: '#e11d48' }} />
-              <span className="text-[10px] text-slate-400 font-semibold font-mono">Blocked</span>
+              <span className="h-2 w-2 rounded-full shadow-sm animate-pulse" style={{ backgroundColor: '#e11d48' }} />
+              <span className="text-[10px] text-slate-600 font-bold font-mono">Blocked</span>
             </div>
           </div>
         </div>

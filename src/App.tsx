@@ -1,612 +1,725 @@
-import React, { useState, useMemo } from 'react';
-import { ChuramLocation, Incident, WeatherData, WeatherCondition } from './types';
-import { INITIAL_LOCATIONS, INITIAL_INCIDENTS, INITIAL_WEATHER, ADVISORIES } from './data';
-import OfflineChuramMap from './components/OfflineChuramMap';
-import GhatGoogleMap from './components/GhatGoogleMap';
-import ElevationProfile from './components/ElevationProfile';
-import RescueDesk from './components/RescueDesk';
-import TrafficBentoStats from './components/TrafficBentoStats';
-import IncidentTimeline from './components/IncidentTimeline';
-import ReportForm from './components/ReportForm';
-import Advisories from './components/Advisories';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChuramLocation, Incident, WeatherCondition } from './types';
+import { INITIAL_LOCATIONS, INITIAL_INCIDENTS } from './data';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   AlertTriangle,
-  Compass,
-  Navigation,
-  Sparkles,
-  Wifi,
-  CloudFog,
+  Phone,
   CheckCircle2,
   ChevronRight,
+  ShieldAlert,
   Info,
-  Search,
-  SlidersHorizontal,
-  Map,
-  ShieldCheck,
+  MapPin,
+  Send,
+  Volume2,
+  PhoneCall,
+  Sun,
+  CloudFog,
+  CloudRain,
+  Undo2,
   AlertCircle
 } from 'lucide-react';
 
-const API_KEY =
-  process.env.GOOGLE_MAPS_PLATFORM_KEY ||
-  (import.meta as any).env?.VITE_GOOGLE_MAPS_PLATFORM_KEY ||
-  (globalThis as any).GOOGLE_MAPS_PLATFORM_KEY ||
-  '';
-const hasValidKey = Boolean(API_KEY) && API_KEY !== 'YOUR_API_KEY';
-
 export default function App() {
-  const [locations, setLocations] = useState<ChuramLocation[]>(INITIAL_LOCATIONS);
-  const [incidents, setIncidents] = useState<Incident[]>(INITIAL_INCIDENTS);
-  const [weather, setWeather] = useState<WeatherData>(INITIAL_WEATHER);
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>('hairpin-5'); // Defaults to the active block loop
-  
-  // Custom states for usability enrichment
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'clear' | 'slow' | 'heavy' | 'blocked'>('all');
-  const [activeMapType, setActiveMapType] = useState<'vector' | 'satellite'>(hasValidKey ? 'satellite' : 'vector');
-  const [showConfigModal, setShowConfigModal] = useState(false);
+  // ---- ACCESSIBILITY AND LOCALIZATION STATES ----
+  const [largeText, setLargeText] = useState<boolean>(true); // Default to big text helper for older/child users!
+  const [useMalayalam, setUseMalayalam] = useState<boolean>(false);
 
-  // Dynamic metrics selectors
-  const congestionIndex = useMemo(() => {
-    let scoreSum = 0;
-    locations.forEach((loc) => {
-      if (loc.status === 'slow') scoreSum += 25;
-      if (loc.status === 'heavy') scoreSum += 65;
-      if (loc.status === 'blocked') scoreSum += 100;
-    });
-    const maxScore = locations.length * 100;
-    return maxScore > 0 ? (scoreSum / maxScore) * 100 : 0;
+  // ---- APP CORE STATUS STATES ----
+  const [locations, setLocations] = useState<ChuramLocation[]>(() => {
+    const local = localStorage.getItem('churam_locations');
+    return local ? JSON.parse(local) : INITIAL_LOCATIONS;
+  });
+
+  const [incidents, setIncidents] = useState<Incident[]>(() => {
+    const local = localStorage.getItem('churam_incidents');
+    return local ? JSON.parse(local) : INITIAL_INCIDENTS;
+  });
+
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>('hairpin-5');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // ---- SIMPLIFIED REPORT FORM STATES ----
+  const [formLocationId, setFormLocationId] = useState<string>('hairpin-5');
+  const [formBlockType, setFormBlockType] = useState<string>('stuck_vehicle');
+  const [formDetails, setFormDetails] = useState<string>('');
+  const [formReporter, setFormReporter] = useState<string>('');
+
+  // Persist state changes
+  useEffect(() => {
+    localStorage.setItem('churam_locations', JSON.stringify(locations));
   }, [locations]);
 
-  const travelTimeMinutes = useMemo(() => {
-    const baseTime = 22; // ideal run 14 km
-    let delaySum = 0;
-    locations.forEach((loc) => {
-      if (loc.status === 'slow') delaySum += 4;
-      if (loc.status === 'heavy') delaySum += 14;
-      if (loc.status === 'blocked') delaySum += 34;
-    });
-    return baseTime + delaySum;
-  }, [locations]);
+  useEffect(() => {
+    localStorage.setItem('churam_incidents', JSON.stringify(incidents));
+  }, [incidents]);
 
-  const blockCount = useMemo(() => {
-    return locations.filter((loc) => loc.status === 'blocked').length;
+  // ---- DYNAMIC CALCULATIONS ----
+  const activeBlocks = useMemo(() => {
+    return locations.filter((loc) => loc.status === 'blocked');
   }, [locations]);
 
   const selectedLocation = useMemo(() => {
     return locations.find((l) => l.id === selectedLocationId) || null;
   }, [locations, selectedLocationId]);
 
-  // Handle active weather changes and simulate updates across mountain pass climbs
-  const handleWeatherSimulationChange = (condition: WeatherCondition) => {
-    let vis = 5000;
-    let temp = 28;
-    let precip = 0.0;
-    let wind = 8;
+  // Translate labels for Kids & Elders (English & Malayalam)
+  const trans = {
+    title: useMalayalam ? 'ചുരം റോഡ് അലേർട്ടുകൾ (NH 766)' : 'Churam Live Traffic Companion',
+    subtitle: useMalayalam 
+      ? 'കുട്ടികൾക്കും മുതിർന്നവർക്കും വളരെ എളുപ്പത്തിൽ മനസ്സിലാക്കാവുന്ന താമരശ്ശേരി ചുരം യാത്രാ വിവരങ്ങൾ.' 
+      : 'NH 766 Thamarassery Ghat Pass Real-Time Roadblock Alerts. Easy to read for grandparents and children.',
+    bigTextToggle: useMalayalam ? '🔠 വലിയ അക്ഷരങ്ങൾ' : '🔠 Extra Large Font',
+    standardTextToggle: useMalayalam ? '🔠 സാധാരണ അക്ഷരങ്ങൾ' : '🔠 Standard Font',
+    langToggle: useMalayalam ? '🌐 Click for English' : '🌐 മലയാളത്തിൽ വായിക്കുക',
     
-    if (condition === 'misty') {
-      vis = 120;
-      temp = 22;
-      precip = 0.2;
-      wind = 10;
-    } else if (condition === 'foggy') {
-      vis = 35;
-      temp = 19;
-      precip = 0.8;
-      wind = 14;
-    } else if (condition === 'rainy') {
-      vis = 85;
-      temp = 21;
-      precip = 4.2;
-      wind = 18;
-    } else if (condition === 'heavy_rain') {
-      vis = 15;
-      temp = 17;
-      precip = 14.8;
-      wind = 26;
-    }
+    // Quick Bulletin
+    noBloxTitle: useMalayalam ? '🟢 യാത്ര ചെയ്യാൻ പൂർണ്ണമായും സുരക്ഷിതം!' : '🟢 ALL CLEAR! ROAD IS OPEN',
+    noBloxDesc: useMalayalam 
+      ? 'ചുരത്തിൽ എവിടെയും ഇപ്പോൾ ഗതാഗത തടസ്സങ്ങൾ ഇല്ല. വേഗത കുറച്ചു ശ്രദ്ധയോടെ വണ്ടി ഓടിക്കുക.' 
+      : 'No active road blocks! Vehicles are moving normally across all hairpin climbs.',
+    bloxTitle: useMalayalam ? '🛑 ഗതാഗത തടസ്സം റിപ്പോർട്ട് ചെയ്തിട്ടുണ്ട്!' : '🛑 ROAD BLOCK ALERT!',
+    bloxDesc: useMalayalam 
+      ? `ചുരത്തിൽ ഇപ്പോൾ ${activeBlocks.length} സ്ഥലത്ത് റോഡ് തടസ്സപ്പെട്ടിരിക്കുന്നു. താഴെയുള്ള വിവരങ്ങൾ കാണുക.` 
+      : `Warning: Road closed/blocked at ${activeBlocks.length} location(s) on the mountain pass right now.`,
     
-    setWeather({
-      condition,
-      temperature: temp,
-      visibility: vis,
-      precipitation: precip,
-      windSpeed: wind,
-      lastUpdated: 'Just now'
-    });
+    locationOfBlock: useMalayalam ? 'തടസ്സമുള്ള കൃത്യമായ സ്ഥലം:' : 'Exact Location of Roadblock:',
+    detailsHeader: useMalayalam ? 'വിശദാംശങ്ങൾ:' : 'Details & Status:',
+    elevationLabel: useMalayalam ? 'കയറുന്ന ഉയരം:' : 'Climb Elevation:',
+    lastUpdatedLabel: useMalayalam ? 'അവസാന പരിശോധന:' : 'Last Check:',
+    resolvedActionBtn: useMalayalam ? 'ഇവിടെയുള്ള ബ്ലോക്ക് മാറി എന്ന് രേഖപ്പെടുത്തൂ ✅' : 'I see this section is CLEAR now ✅',
+    
+    // S-curve Road Climb Ladder representation
+    mapTitle: useMalayalam ? 'വഴിയിലെ അവസ്ഥകൾ പരിശോധിക്കൂ (താഴെ നിന്ന് മുകളിലേക്ക്):' : 'Check Road Sections (From Bottom to Top):',
+    mapSub: useMalayalam ? 'പച്ച നിറം സുരക്ഷിതമായ വഴിയേയും ചുവപ്പ് നിറം തടസ്സത്തേയും കാണിക്കുന്നു.' : 'Green items list clear sections. Red items indicates blocked spots.',
+    bottomMarker: useMalayalam ? '🚗 അടിവാരം (മലയുടെ താഴെ ഭാഗം)' : '🚗 ADIVARAM ENTRY (Foot of Mountain)',
+    topMarker: useMalayalam ? '⛰️ ലക്കിടി വ്യൂപോയിന്റ് (മലയുടെ മുകളിൽ)' : '⛰️ LAKKIDI VIEWPOINT (Summit Peak)',
+    
+    // Simplified reporting form
+    formHeader: useMalayalam ? 'റോഡിൽ നിങ്ങൾ തടസ്സം കണ്ടോ? എല്ലാവരേയും അറിയിക്കൂ' : 'Report a Roadblock to Help Others',
+    formDesc: useMalayalam ? 'വളരെ ലളിതമായ ഒറ്റ ക്ലിക്ക് വഴി പുതിയ ബ്ലോക്കുകൾ താഴെ റിപ്പോർട്ട് ചെയ്യാം.' : 'Elders & children can easily submit updates. Tell everyone behind you!',
+    formLabelWhere: useMalayalam ? '1. എവിടെയാണ് തടസ്സമുള്ളത്?' : '1. Where is the obstacle?',
+    formLabelWhat: useMalayalam ? '2. അവിടെ എന്താണ് സംഭവിച്ചത്?' : '2. What is the problem there?',
+    formLabelExtra: useMalayalam ? '3. കൂടുതൽ വിവരങ്ങൾ എഴുതാം (ഓപ്ഷണൽ)' : '3. What else can you see? (Written simply)',
+    formPlaceholderExtra: useMalayalam ? 'ഉദാ: വലിയ ട്രക്ക് കിടക്കുന്നു, ചെറിയ വണ്ടിക്ക് പോകാം...' : 'e.g., Heavy lorry is stuck on the inside curb.',
+    formLabelWho: useMalayalam ? '4. നിങ്ങളുടെ പേര് എഴുതാം' : '4. Your Name (helps to verify)',
+    formPlaceholderWho: useMalayalam ? 'ഉദാ: രാഘവേട്ടൻ, അപ്പു (10 വയസ്സ്)...' : 'e.g., Unni (Commuter), Priya (Teacher)...',
+    formSubmit: useMalayalam ? '📣 ഈ വിവരം എല്ലാവർക്കും കൈമാറൂ' : '📣 Broadcast Alert to Travellers',
+    
+    // Emergency numbers
+    emergencyHeader: useMalayalam ? 'അടിയന്തിര സഹായത്തിന് ഇവിടെ നേരിട്ട് വിളിക്കാം:' : 'Emergency Numbers (Direct Touch Dial):',
+    policeLabel: useMalayalam ? 'ഹൈവേ പോലീസ് കൺട്രോൾ റൂം' : 'Highway Police Desk',
+    rescueLabel: useMalayalam ? 'ഫയർ & ചുരം റെസ്ക്യൂ വിങ്' : 'Fire & Mountain Rescue',
+    medicalLabel: useMalayalam ? 'ആംബുലൻസ് / ട്രോമാകെയർ' : 'Ghat Pass Ambulance Service',
+    
+    resetBtn: useMalayalam ? 'തത്സമയ വിവരങ്ങൾ സാധാരണ നിലയിലാക്കാൻ ഇവിടെ ഞെക്കൂ (Default Reset)' : 'Reset Portal Status Back for Testing',
+    legalFooter: useMalayalam ? 'ഈ വിവരങ്ങൾ വഴിയാത്രക്കാർ നൽകുന്ന തത്സമയ അപ്ഡേറ്റുകളാണ്.' : 'Public crowdsourced companion for Kozhikode-Wayanad NH 766 commuters.',
+    hairpinText: useMalayalam ? 'ഹെയർപിൻ വളവ്' : 'Hairpin Curve'
+  };
 
-    // Recalculate node statuses based on climate constraints
+  const handleResolveBlock = (locationId: string) => {
     setLocations((prev) =>
-      prev.map((loc) => {
-        // Retain original trailer blockage at hairpin 5
-        if (loc.id === 'hairpin-5') return loc;
-
-        let simulatedStatus: ChuramLocation['status'] = 'clear';
-        let customReport = loc.name + ' looking stable.';
-
-        if (condition === 'heavy_rain') {
-          if (loc.elevation && loc.elevation > 400) {
-            simulatedStatus = 'heavy';
-            customReport = 'MONSOON FORCE: Mountain water torrents flowing over loops. Reduced traction. Keep safe distances.';
-          } else {
-            simulatedStatus = 'slow';
-            customReport = 'WET ROAD ACCENTS: Rainfall slick surface. Caution advised.';
-          }
-        } else if (condition === 'foggy') {
-          if (loc.elevation && loc.elevation > 500) {
-            simulatedStatus = 'slow';
-            customReport = 'RADAR MIST WARNING: Visual range under 35 meters. Mandatory headlight use in upper loops.';
-          }
-        } else if (condition === 'misty') {
-          if (loc.id === 'hairpin-9' || loc.id === 'lakkidi-viewpoint') {
-            simulatedStatus = 'slow';
-            customReport = 'DAMP BLANKET: Light whispy fog covers summit viewpoints.';
-          }
-        } else {
-          // Sunny
-          simulatedStatus = 'clear';
-          customReport = 'OPTIMAL TRANSIT: Clean sunny skies, asphalt is dry with excellent tires coefficient.';
-        }
-
-        return {
-          ...loc,
-          status: simulatedStatus,
-          lastUpdated: 'Just now',
-          details: customReport
-        };
-      })
+      prev.map((loc) =>
+        loc.id === locationId
+          ? {
+              ...loc,
+              status: 'clear',
+              lastUpdated: 'Just now',
+              details: useMalayalam 
+                ? 'തടസ്സങ്ങൾ പൂർണ്ണമായി നീക്കി. ഇപ്പോൾ ഇതുവഴിയുള്ള യാത്ര സുരക്ഷിതമാണ്.'
+                : 'Road opened! The obstacle was completely cleared and flow is restored.'
+            }
+          : loc
+      )
     );
-  };
-
-  // Feed Upvotes Handler
-  const handleUpvote = (id: string) => {
     setIncidents((prev) =>
-      prev.map((inc) => (inc.id === id ? { ...inc, upvotes: inc.upvotes + 1 } : inc))
+      prev.filter((inc) => inc.locationId !== locationId)
     );
+    setSelectedLocationId(locationId);
+    setSuccessMessage(useMalayalam ? 'തടസ്സം വിജയകരമായി പരിഹരിച്ചു!' : 'Alert resolved! Live status marked as clear.');
+    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  // Add Incident and synchronize state with respective locations
-  const handleAddReport = (
-    newReport: Omit<Incident, 'id' | 'timestamp' | 'upvotes' | 'status'>
-  ) => {
-    const freshId = `inc-${Date.now()}`;
-    const freshIncident: Incident = {
-      ...newReport,
-      id: freshId,
-      timestamp: new Date().toISOString(),
+  const handleResetToNormal = () => {
+    localStorage.removeItem('churam_locations');
+    localStorage.removeItem('churam_incidents');
+    setLocations(INITIAL_LOCATIONS);
+    setIncidents(INITIAL_INCIDENTS);
+    setSelectedLocationId('hairpin-5');
+    setSuccessMessage(useMalayalam ? 'വിവരങ്ങൾ ആദ്യം മുതലുള്ള റൂട്ടിലേക്ക് മാറ്റി!' : 'Route reset to default simulated blockage state.');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleAddLiveIncident = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const targetLoc = locations.find((l) => l.id === formLocationId);
+    if (!targetLoc) return;
+
+    let friendlyTitle = 'Obstruction';
+    let friendlyDesc = 'Traffic slow down.';
+
+    if (formBlockType === 'stuck_vehicle') {
+      friendlyTitle = useMalayalam ? 'വലിയ വാഹനം കേടായി കുടുങ്ങി കിടക്കുന്നു' : 'Heavy Vehicle Stuck on Bend';
+      friendlyDesc = useMalayalam 
+        ? 'ഒരു വലിയ ബസോ അല്ലെങ്കിൽ ലോറിയോ വളവ് തിരിയാൻ സാധിക്കാതെ വഴി തടസ്സപ്പെടുത്തിയിരിക്കുന്നു.'
+        : 'A big transport container or public bus is stuck on the corner. Turning is restricted.';
+    } else if (formBlockType === 'accident') {
+      friendlyTitle = useMalayalam ? 'ചെറിയ വാഹനാപകടം നടന്നിട്ടുണ്ട്' : 'Minor Collision Accident';
+      friendlyDesc = useMalayalam
+        ? 'വാഹനാപകടം ഉണ്ടായതിനാൽ പോലീസ് ഗതാഗത നിയന്ത്രണം ഒരുക്കിയിരിക്കുന്നു.'
+        : 'A minor vehicle collision. Police are controlling traffic flow alternatively.';
+    } else if (formBlockType === 'landslide') {
+      friendlyTitle = useMalayalam ? 'റൂട്ടിൽ കല്ലും മണ്ണും വീണിരിക്കുന്നു' : 'Rockfall or Landslide Rocks';
+      friendlyDesc = useMalayalam
+        ? 'മുകളിലെ കുന്നിൽ നിന്നും ചെറിയ രീതിയിൽ പാറയോ മണ്ണോ റോഡിലേക്ക് വീണിട്ടുണ്ട്.'
+        : 'Small stones and mountain mud have slipped onto the tarmac.';
+    } else if (formBlockType === 'weather') {
+      friendlyTitle = useMalayalam ? 'കനത്ത മഞ്ഞും പുകയും കാരണം ഒന്നും കാണാൻ വയ്യ' : 'Dangerous Heavy Fog & Low Visibility';
+      friendlyDesc = useMalayalam
+        ? 'വളരെ ശക്തമായ മൂടൽമഞ്ഞ് അനുഭവപ്പെടുന്നുണ്ട്. വഴി കാണാൻ ബുദ്ധിമുട്ടാണ്.'
+        : 'Thick blinding fog. Visibility is extremely low.';
+    } else {
+      friendlyTitle = useMalayalam ? 'വഴി പൂർണ്ണമായും ഒഴിഞ്ഞു' : 'Road Section is Completely Open';
+      friendlyDesc = useMalayalam
+        ? 'ഗതാഗത തടസ്സങ്ങൾ ഒന്നും തന്നെയില്ല.'
+        : 'All blocks cleared. Vehicles are free to pass normally.';
+    }
+
+    if (formDetails.trim()) {
+      friendlyDesc += ` (Commuter Note: ${formDetails})`;
+    }
+
+    const reporterName = formReporter.trim() ? formReporter.trim() : (useMalayalam ? 'യാത്രക്കാരൻ' : 'Kind Commuter');
+
+    // Add Incident
+    const newInc: Incident = {
+      id: `incident-${Date.now()}`,
+      title: friendlyTitle,
+      description: friendlyDesc,
+      locationId: formLocationId,
+      locationName: targetLoc.name,
+      severity: formBlockType === 'clear' ? 'low' : 'critical',
+      timestamp: 'Just now',
+      reportedBy: reporterName,
       upvotes: 1,
+      type: formBlockType === 'clear' ? 'general' : (formBlockType as any),
       status: 'active'
     };
 
-    // Prepend to timeline state
-    setIncidents((prev) => [freshIncident, ...prev]);
-
-    // Map severities to traffic colors
-    let locationStatus: ChuramLocation['status'] = 'clear';
-    if (newReport.severity === 'critical') locationStatus = 'blocked';
-    else if (newReport.severity === 'high') locationStatus = 'heavy';
-    else if (newReport.severity === 'medium') locationStatus = 'slow';
-
+    setIncidents((prev) => [newInc, ...prev]);
     setLocations((prev) =>
       prev.map((loc) =>
-        loc.id === newReport.locationId
+        loc.id === formLocationId
           ? {
               ...loc,
-              status: locationStatus,
+              status: formBlockType === 'clear' ? 'clear' : 'blocked',
               lastUpdated: 'Just now',
-              details: `DRIVER ALERT: ${newReport.title}. Detail: ${newReport.description}`
+              details: friendlyDesc
             }
           : loc
       )
     );
 
-    // Focus on report node position
-    setSelectedLocationId(newReport.locationId);
+    setSelectedLocationId(formLocationId);
+    setFormDetails('');
+    setFormReporter('');
+
+    setSuccessMessage(useMalayalam ? 'അലേർട്ട് വിജയകരമായി പ്രക്ഷേപണം ചെയ്തു!' : 'Roadblock report published! Thank you.');
+    setTimeout(() => setSuccessMessage(null), 4000);
   };
-
-  const handleSelectLocation = (loc: ChuramLocation) => {
-    setSelectedLocationId(loc.id);
-  };
-
-  // Filter climbs based on keyword inputs and status chips
-  const filteredLocations = useMemo(() => {
-    return locations.filter((loc) => {
-      const matchSearch =
-        loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loc.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (loc.hairpinNumber && `curve ${loc.hairpinNumber}`.includes(searchQuery.toLowerCase()));
-
-      const matchStatus = statusFilter === 'all' || loc.status === statusFilter;
-      return matchSearch && matchStatus;
-    });
-  }, [locations, searchQuery, statusFilter]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-indigo-500/30">
+    <div className={`min-h-screen bg-[#f1f5f9] text-slate-900 transition-all duration-200 selection:bg-indigo-600 selection:text-white ${largeText ? 'text-lg leading-relaxed' : 'text-sm'}`}>
       
-      {/* Dynamic warning banner */}
-      <AnimatePresence>
-        {blockCount > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0 }}
-            className="bg-rose-600 text-white font-sans font-bold text-xs flex items-center justify-center gap-2 p-2.5 shadow-md relative z-40 overflow-hidden"
-          >
-            <AlertTriangle className="w-4 h-4 text-white animate-bounce" />
-            <span className="uppercase tracking-wide font-mono text-[11px] font-extrabold text-center">
-              ALERT: Thamarassery Mountain Pass (NH 766) has active roadblocks. Alternating single lane traffic implemented on heavy curves.
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* HEADER BAR: Designed specifically to be bold and clear, and fully SEO indexable */}
+      <header className="bg-white border-b-4 border-indigo-600 shadow-sm relative sticky top-0 z-50 py-4 px-4">
+        <div className="max-w-4xl mx-auto flex flex-col gap-3">
+          
+          {/* Elderly & Children Inclusive Controls panel */}
+          <div className="flex items-center justify-between gap-3 bg-indigo-50 p-3 rounded-2xl flex-wrap">
+            
+            <button
+              id="large-text-btn"
+              onClick={() => setLargeText(!largeText)}
+              className="flex items-center gap-1.5 px-4.5 py-2.5 bg-white border-2 border-indigo-200 text-indigo-700 font-extrabold text-sm rounded-xl cursor-pointer hover:bg-indigo-100/55 transition-all shadow-xxs"
+              aria-label="Toggle larger accessible text size"
+            >
+              <Volume2 className="w-4 h-4 text-indigo-600" />
+              <span>{largeText ? trans.standardTextToggle : trans.bigTextToggle}</span>
+            </button>
 
-      {/* Primary Container Wrap */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-        
-        {/* Header Hero Branding Area */}
-        <header className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 border-b border-slate-900 pb-5">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-gradient-to-br from-indigo-500/10 to-indigo-650/5 border border-indigo-500/25 text-indigo-400 rounded-2xl shadow-lg ring-1 ring-white/5">
-              <Navigation className="w-6 h-6 rotate-45 text-indigo-400 animate-pulse" />
+            <button
+              id="malayalam-toggle-btn"
+              onClick={() => setUseMalayalam(!useMalayalam)}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-xl cursor-pointer transition-all shadow-sm"
+              aria-label="Switch language to Malayalam or English"
+            >
+              🌐 {trans.langToggle}
+            </button>
+          </div>
+
+          {/* Simple descriptive Title */}
+          <div className="flex items-center gap-2.5 justify-center md:justify-start">
+            <div className={`bg-rose-500 text-white p-2.5 rounded-full ${activeBlocks.length > 0 ? 'animate-bounce' : ''}`}>
+              <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white font-display tracking-tight">
-                  Churam Traffic Codex
-                </h1>
-                <span className="h-2.5 w-2.5 relative flex">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span className="text-[10px] font-mono text-emerald-400 py-0.5 px-1.5 rounded-full bg-emerald-950/40 border border-emerald-555/15 font-bold uppercase tracking-wider">Feed Live</span>
+              <h1 className={`${largeText ? 'text-2.5xl md:text-3.5xl' : 'text-xl md:text-2xl'} font-black tracking-tight text-slate-950`}>
+                {trans.title}
+              </h1>
+              <h2 className={`${largeText ? 'text-md md:text-lg' : 'text-xs md:text-sm'} text-slate-500 font-medium`}>
+                {trans.subtitle}
+              </h2>
+            </div>
+          </div>
+
+        </div>
+      </header>
+
+      {/* MAIN CONTAINER */}
+      <main className="max-w-4xl mx-auto px-4 py-6 md:py-8 space-y-6">
+
+        {/* Dynamic Interactive Alert Banner: Shows immediately if there are blocks */}
+        <div className="space-y-4">
+          <AnimatePresence>
+            {successMessage && (
+              <motion.div
+                initial={{ transform: 'scale(0.95)', opacity: 0 }}
+                animate={{ transform: 'scale(1)', opacity: 1 }}
+                exit={{ transform: 'scale(0.95)', opacity: 0 }}
+                className="bg-emerald-600 text-white p-4.5 rounded-2xl shadow-md font-bold text-center flex items-center justify-center gap-2"
+                id="accessible-toast"
+              >
+                <CheckCircle2 className="w-5 h-5 text-white" />
+                <span>{successMessage}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* BLOCKAGE QUICK INDICATOR CRITICAL BAR */}
+          <div id="blockage-heavy-announcement">
+            {activeBlocks.length > 0 ? (
+              <div className="bg-red-550 text-white p-6 rounded-3xl shadow-md border-4 border-red-700">
+                <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4">
+                  <div className="flex items-center gap-4 text-center md:text-left select-none">
+                    <span className="text-5xl md:text-6xl" role="img" aria-label="Alert hand signal">🛑</span>
+                    <div>
+                      <h3 className={`${largeText ? 'text-2xl md:text-3.5xl' : 'text-xl md:text-2xl'} font-black text-rose-100`}>
+                        {trans.bloxTitle}
+                      </h3>
+                      <p className="text-white text-md font-extrabold mt-1">
+                        {trans.bloxDesc}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Highlighted exact Blocked hairpin node immediately for children and elders */}
+                <div className="mt-5 p-4 bg-red-950/20 border border-white/20 rounded-2xl space-y-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-rose-200 block">
+                    ⚠️ {trans.locationOfBlock}
+                  </span>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {activeBlocks.map((block) => (
+                      <div
+                        key={block.id}
+                        onClick={() => setSelectedLocationId(block.id)}
+                        className="bg-white/10 hover:bg-white/15 p-3 rounded-xl border border-white/10 flex items-center justify-between cursor-pointer transition-all"
+                      >
+                        <div>
+                          <strong className="text-white text-md block font-black">
+                            📍 {block.name}
+                          </strong>
+                          <span className="text-xs text-rose-100/90 font-medium">
+                            {block.details}
+                          </span>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-white shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Accessible instruction */}
+                  <div className="mt-3 p-3 bg-white/10 rounded-xl space-y-1">
+                    <p className={`font-extrabold ${largeText ? 'text-sm md:text-md' : 'text-xs'}`}>
+                      🚘 {useMalayalam ? 'പകരമുള്ള വഴികൾ (Alternate Route Suggestion):' : 'Suggested Action:'}
+                    </p>
+                    <p className={`${largeText ? 'text-[13px] md:text-sm' : 'text-xs'} text-rose-100 leading-normal`}>
+                      {useMalayalam 
+                        ? 'കുട്ടികളോ പ്രായമായവരോ കൂടെയുണ്ടെങ്കിൽ കുറ്റ്യാടി ചുരം വഴിയുള്ള മറ്റ് പാത ഉപയോഗിക്കുക.' 
+                        : 'If driving light cars/bikes, expect single lane cues. Buses and multi-axle cargo lists are advised to detour via Kuttiady Ghat Pass or Palakkad bypass.'}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <p className="text-slate-400 text-xs md:text-sm mt-0.5">
-                Dynamic visual routing log, real-time weather weather effects, elevation index, & crowd safety monitors for NH 766.
-              </p>
-            </div>
+            ) : (
+              <div className="bg-emerald-600 text-white p-6 rounded-3xl shadow-sm border-4 border-emerald-700 text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4 text-center md:text-left">
+                  <span className="text-5xl md:text-6xl select-none" role="img" aria-label="Happy smiley route open">🟢</span>
+                  <div>
+                    <h3 className={`${largeText ? 'text-2xl md:text-3xl' : 'text-xl md:text-2xl'} font-black`}>
+                      {trans.noBloxTitle}
+                    </h3>
+                    <p className="text-emerald-100 font-extrabold mt-1">
+                      {trans.noBloxDesc}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Quick HUD controls */}
-          <div className="flex flex-wrap items-center gap-3 font-mono text-xxs">
-            <button
-              onClick={() => setShowConfigModal(true)}
-              className="p-2 px-3.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-xl text-slate-350 flex items-center gap-1.5 transition-all shadow-md cursor-pointer text-xxs font-semibold uppercase tracking-wider"
-            >
-              <Info className="w-3.5 h-3.5 text-indigo-400" />
-              <span>GIS API Settings</span>
-            </button>
-            
-            <div className="p-2 px-3.5 bg-indigo-950/20 border border-indigo-900/30 rounded-xl text-indigo-300 flex items-center gap-1.5 shadow-md">
-              <Wifi className="w-3.5 h-3.5" />
-              <span>Telemetry Connected</span>
-            </div>
-          </div>
-        </header>
-
-        {/* 1. Bento Dashboard Metrics HUD */}
-        <TrafficBentoStats
-          locations={locations}
-          incidents={incidents}
-          weather={weather}
-          congestionIndex={congestionIndex}
-          travelTimeMinutes={travelTimeMinutes}
-          blockCount={blockCount}
-          onWeatherChange={handleWeatherSimulationChange}
-        />
-
-        {/* 2. Main split Screen layout */}
-        <main className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* STICKY ACCESSIBLE TIMELINE MAP (ROAD LADDER TRACE) */}
+        <section id="climb-route-ladder" className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200/90 shadow-xs">
           
-          {/* Left Panel: Curve index lookup with altitude profile */}
-          <section className="lg:col-span-5 space-y-5">
+          <div className="mb-4">
+            <h3 className={`${largeText ? 'text-2xl' : 'text-lg'} font-black text-slate-950`}>
+              {trans.mapTitle}
+            </h3>
+            <p className="text-slate-500 text-xs md:text-sm">
+              {trans.mapSub}
+            </p>
+          </div>
+
+          <p className="text-center font-mono font-bold text-slate-400 text-xxs tracking-wider border-b border-dashed border-slate-200 pb-2">
+            {trans.topMarker}
+          </p>
+
+          {/* LINEAR WATERFALL ROAD BLOCKS VIEW: Extremely clear, no technical cluttered charts */}
+          <div className="space-y-3.5 pl-3 border-l-4 border-indigo-100 ml-4.5 py-4 relative">
             
-            {/* Interactive Elevation Mountain Altimeter */}
-            <ElevationProfile
-              locations={locations}
-              selectedLocationId={selectedLocationId}
-              onSelectLocation={handleSelectLocation}
-            />
+            {locations.slice().reverse().map((loc) => {
+              const isSelected = selectedLocationId === loc.id;
+              const isBlocked = loc.status === 'blocked';
+              const isSlow = loc.status === 'slow' || loc.status === 'heavy';
 
-            {/* Elevation Ascent list container */}
-            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-850 shadow-xl flex flex-col relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-505/10 rounded-full blur-3xl pointer-events-none" />
+              // Visual indicator tokens
+              let statusLabel = useMalayalam ? '🟢 സുഖകരം' : '🟢 Open';
+              let bgSelection = 'bg-[#f8fafc] border-slate-200 hover:bg-slate-100/60';
+              let ringColor = 'ring-emerald-250 bg-emerald-500';
+              let textStyle = 'text-slate-900';
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="text-base font-bold text-white font-display tracking-wide uppercase">Climber Index Directory</h2>
-                  <p className="text-slate-400 text-xxs">Search hairpin loops from Foothills up to Summit viewpoint</p>
+              if (isBlocked) {
+                statusLabel = useMalayalam ? '🛑 തടസ്സപ്പെട്ടു!' : '🛑 blocked!';
+                bgSelection = 'bg-rose-50 border-rose-300 hover:bg-rose-100/60 shadow-xs';
+                ringColor = 'ring-rose-250 bg-rose-500 animate-pulse';
+                textStyle = 'text-red-950 font-black';
+              } else if (isSlow) {
+                statusLabel = useMalayalam ? '🟡 പതുക്കെ' : '🟡 Slow Queue';
+                bgSelection = 'bg-amber-50 border-amber-300 hover:bg-amber-100/60';
+                ringColor = 'ring-amber-250 bg-amber-500';
+                textStyle = 'text-amber-950';
+              }
+
+              return (
+                <div
+                  key={loc.id}
+                  onClick={() => setSelectedLocationId(loc.id)}
+                  className={`p-4 rounded-2.5xl border transition-all duration-300 cursor-pointer flex items-center justify-between gap-3.5 relative ${bgSelection} ${
+                    isSelected ? 'ring-3 ring-indigo-500/80 border-indigo-650 z-10 scale-102 bg-indigo-50/50' : ''
+                  }`}
+                  id={`ladder-row-${loc.id}`}
+                >
+                  {/* Big physical bullet node */}
+                  <div className={`absolute -left-[27.5px] top-6 h-4 w-4 rounded-full ring-4 ${ringColor}`} />
+
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <strong className={`${largeText ? 'text-lg md:text-xl' : 'text-sm md:text-md'} ${textStyle}`}>
+                        {loc.name}
+                      </strong>
+                      {loc.hairpinNumber && (
+                        <span className="p-1 px-2.5 bg-indigo-100/60 border border-indigo-150 text-indigo-950 font-black rounded-lg text-xxs font-sans uppercase">
+                          {trans.hairpinText} {loc.hairpinNumber}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Simplified direct action text summary */}
+                    <p className={`${largeText ? 'text-sm md:text-md leading-relaxed mt-1 text-slate-700' : 'text-xs mt-0.5 text-slate-550'} line-clamp-1`}>
+                      {loc.details}
+                    </p>
+                  </div>
+
+                  {/* Status pill right alignment */}
+                  <div className="text-right shrink-0">
+                    <span className={`px-2.5 py-1.5 rounded-xl border font-black text-[11px] md:text-xs tracking-wide uppercase ${
+                      isBlocked ? 'bg-red-650 text-white border-red-700' : isSlow ? 'bg-amber-400 text-slate-950 border-amber-500' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    }`}>
+                      {statusLabel}
+                    </span>
+                  </div>
                 </div>
-                <div className="p-1 px-2.5 bg-slate-950 border border-slate-850 rounded text-xxs font-mono text-slate-400 font-bold uppercase tracking-wider">
-                  9 Curves Logged
+              );
+            })}
+
+          </div>
+
+          <p className="text-center font-mono font-bold text-slate-400 text-xxs tracking-wider border-t border-dashed border-slate-200 pt-2 mb-1">
+            {trans.bottomMarker}
+          </p>
+
+          {/* DYNAMIC CARD DETAIL DRAWER FOCUS */}
+          <div className="mt-4 p-5 bg-indigo-50 border-2 border-indigo-100 rounded-3xl">
+            {selectedLocation ? (
+              <div className="space-y-2">
+                <span className="text-xxs uppercase tracking-widest text-[#4f46e5] font-black block">
+                  📍 {selectedLocation.name} details
+                </span>
+                <p className={`${largeText ? 'text-[17px] md:text-xl font-bold' : 'text-sm font-semibold'} text-slate-950`}>
+                  &quot;{selectedLocation.details}&quot;
+                </p>
+
+                <div className="flex flex-wrap gap-x-5 gap-y-1.5 pt-3 border-t border-indigo-200/50 font-mono text-xs text-indigo-950">
+                  <span>{trans.elevationLabel} <b>{selectedLocation.elevation}m</b></span>
+                  <span>{trans.lastUpdatedLabel} <b>{selectedLocation.lastUpdated}</b></span>
+                  
+                  {/* SIMULATOR QUICK CLEAR ACTION BUTTON */}
+                  {selectedLocation.status === 'blocked' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleResolveBlock(selectedLocation.id);
+                      }}
+                      className="font-sans ml-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-850 text-white font-black rounded-xl text-xs transition-colors cursor-pointer shadow-sm"
+                    >
+                      {trans.resolvedActionBtn}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">
+                Click any section above to see altitude metrics and localized breakdown notices.
+              </p>
+            )}
+          </div>
+
+        </section>
+
+        {/* REPORT FORM & COMMUNITY TIMELINE SPLITTER */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          
+          {/* SIMPLIFIED LIVE NOTIFIER PANEL */}
+          <div id="quick-alert-submission" className="p-5 md:p-6 bg-white border border-slate-200/95 rounded-3xl shadow-sm">
+            
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldAlert className="w-5 h-5 text-indigo-650" />
+              <h3 className={`${largeText ? 'text-xl md:text-2xl' : 'text-md md:text-lg'} font-black text-slate-950`}>
+                {trans.formHeader}
+              </h3>
+            </div>
+            <p className="text-slate-500 text-xs md:text-sm mb-4 leading-relaxed">
+              {trans.formDesc}
+            </p>
+
+            <form onSubmit={handleAddLiveIncident} className="space-y-4">
+              
+              {/* WHERE Select */}
+              <div>
+                <label className="block text-xxs font-black text-slate-450 uppercase tracking-widest mb-1.5">
+                  {trans.formLabelWhere}
+                </label>
+                <select
+                  value={formLocationId}
+                  onChange={(e) => setFormLocationId(e.target.value)}
+                  className="w-full bg-[#f8fafc] border border-slate-250 text-slate-900 rounded-xl p-3.5 font-bold cursor-pointer focus:bg-white select-none leading-normal text-sm"
+                >
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name} {loc.hairpinNumber ? ` (Bend ${loc.hairpinNumber})` : ''} — {loc.status.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* WHAT buttons block */}
+              <div>
+                <label className="block text-xxs font-black text-slate-450 uppercase tracking-widest mb-2">
+                  {trans.formLabelWhat}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'stuck_vehicle', m: '🚚 Stuck Vehicle', ml: '🚚 വാഹനം കുടുങ്ങി' },
+                    { id: 'accident', m: '💥 Accident Spot', ml: '💥 അപകടം' },
+                    { id: 'landslide', m: '🌧️ Rock/Soil Fall', ml: '🌧️ മണ്ണൊലിപ്പ്' },
+                    { id: 'weather', m: '🌫️ Thick Fog', ml: '🌫️ കനത്ത മഞ്ഞ്' },
+                    { id: 'clear', m: '🟢 All Clean Now', ml: '🟢 എല്ലാം ഒഴിവ്' }
+                  ].map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setFormBlockType(preset.id)}
+                      className={`p-3 rounded-2xl border text-xs font-bold transition-all text-left cursor-pointer leading-tight ${
+                        formBlockType === preset.id
+                          ? 'bg-indigo-600 border-indigo-700 text-white shadow-sm font-black'
+                          : 'bg-[#f8fafc] border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {useMalayalam ? preset.ml : preset.m}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Dynamic Search input */}
-              <div className="relative mb-3.5">
+              {/* EXTRA Details (Simple single-line) */}
+              <div>
+                <label className="block text-xxs font-black text-slate-450 uppercase tracking-widest mb-1.5">
+                  {trans.formLabelExtra}
+                </label>
                 <input
                   type="text"
-                  placeholder="Look up curves number, name, status..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-850 text-slate-300 text-xs rounded-xl p-2.5 pl-9 focus:border-indigo-500/80 focus:outline-none placeholder-slate-650 transition-all font-sans"
+                  value={formDetails}
+                  onChange={(e) => setFormDetails(e.target.value)}
+                  placeholder={trans.formPlaceholderExtra}
+                  className="w-full bg-[#f8fafc] border border-slate-250 text-slate-900 rounded-xl p-3.5 text-xs font-semibold focus:bg-white"
                 />
-                <div className="absolute left-3 top-3.5 pointer-events-none text-slate-600">
-                  <Search className="w-3.5 h-3.5" />
-                </div>
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-2.5 text-xxs font-mono text-slate-500 hover:text-white uppercase p-1 px-2 hover:bg-slate-850 rounded transition-colors"
-                  >
-                    Clear
-                  </button>
-                )}
               </div>
 
-              {/* Quick Status Category Filter Chips */}
-              <div className="flex flex-wrap gap-1.5 mb-4 text-xxs font-semibold font-mono border-b border-slate-850/60 pb-3">
-                {[
-                  { id: 'all', label: 'All Segments', color: 'hover:text-white' },
-                  { id: 'clear', label: '🟢 Clear', color: 'text-emerald-450' },
-                  { id: 'slow', label: '🟡 Slow/Damp', color: 'text-amber-400' },
-                  { id: 'heavy', label: '🟠 Heavy', color: 'text-orange-400' },
-                  { id: 'blocked', label: '🔴 Blocked', color: 'text-rose-400' }
-                ].map((chip) => (
-                  <button
-                    key={chip.id}
-                    onClick={() => setStatusFilter(chip.id as any)}
-                    className={`p-1.5 px-3 rounded-lg transition-all cursor-pointer border ${
-                      statusFilter === chip.id
-                        ? 'bg-slate-800 border-slate-700 text-white font-extrabold shadow'
-                        : 'border-slate-850/40 text-slate-500 hover:bg-slate-950 ' + chip.color
-                    }`}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Sequential loops climbers directory */}
-              <div id="elevation-node-list" className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
-                {filteredLocations.length === 0 ? (
-                  <div className="py-12 text-center text-slate-600 border border-dashed border-slate-850 rounded-xl my-2">
-                    <CheckCircle2 className="w-8 h-8 text-slate-800 mx-auto mb-2" />
-                    <p className="text-xs font-semibold">No roadside sectors matched your query</p>
-                    <p className="text-[10px] text-slate-700 mt-1">Try relaxing your constraints or query spelling.</p>
-                  </div>
-                ) : (
-                  filteredLocations.map((loc, idx) => {
-                    const isSelected = selectedLocationId === loc.id;
-                    
-                    let statusColor = 'border-slate-850/60 bg-slate-950/20';
-                    let statusBullet = 'bg-slate-700';
-                    let statusLabel = 'Clear';
-                    
-                    if (loc.status === 'blocked') {
-                      statusColor = 'border-rose-500/20 bg-rose-950/20 shadow';
-                      statusBullet = 'bg-rose-500 animate-pulse';
-                      statusLabel = 'Blocked';
-                    } else if (loc.status === 'heavy') {
-                      statusColor = 'border-orange-500/20 bg-orange-950/15';
-                      statusBullet = 'bg-orange-500';
-                      statusLabel = 'Heavy General';
-                    } else if (loc.status === 'slow') {
-                      statusColor = 'border-amber-500/10 bg-amber-950/10';
-                      statusBullet = 'bg-amber-500';
-                      statusLabel = 'Caution / Damp';
-                    } else if (loc.status === 'clear') {
-                      statusColor = 'border-slate-850 bg-slate-950/25';
-                      statusBullet = 'bg-emerald-500';
-                      statusLabel = 'Free Flowing';
-                    }
-
-                    return (
-                      <motion.div
-                        key={loc.id}
-                        onClick={() => handleSelectLocation(loc)}
-                        whileHover={{ x: 2 }}
-                        className={`p-3 rounded-xl border transition-all duration-300 flex items-start gap-3 cursor-pointer hover:border-slate-700 group ${
-                          isSelected ? 'ring-1 ring-indigo-500/50 border-indigo-500/30 bg-indigo-950/10 shadow-lg' : ''
-                        } ${statusColor}`}
-                        id={`node-row-${loc.id}`}
-                      >
-                        {/* Dot loop index */}
-                        <div className="flex flex-col items-center flex-shrink-0 mt-1">
-                          <span className={`h-2.5 w-2.5 rounded-full ${statusBullet} shadow`} />
-                          <span className="w-[1px] h-9 bg-slate-850 mt-1.5 border-dashed" />
-                        </div>
-
-                        {/* Node details */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1.5">
-                            <h3 className="text-xs font-bold text-slate-100 group-hover:text-indigo-400 transition-colors truncate font-display">
-                              {loc.name}
-                            </h3>
-                            <span className="text-[9px] font-mono font-bold text-slate-550 shrink-0">
-                              el: {loc.elevation}m
-                            </span>
-                          </div>
-                          
-                          <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5 leading-snug group-hover:line-clamp-none transition-all duration-200">
-                            {loc.details}
-                          </p>
-                          
-                          <div className="flex items-center gap-1.5 mt-1.5 text-[8.5px] font-mono text-slate-500 group-hover:text-slate-400">
-                            <span className="uppercase text-[8px] font-extrabold flex items-center gap-0.5">
-                              Status: <b className={
-                                loc.status === 'blocked' ? 'text-rose-400' :
-                                loc.status === 'heavy' ? 'text-orange-400' :
-                                loc.status === 'slow' ? 'text-amber-500' : 'text-emerald-450'
-                              }>{statusLabel}</b>
-                            </span>
-                            <span>•</span>
-                            <span>{loc.lastUpdated}</span>
-                          </div>
-                        </div>
-
-                        <ChevronRight className={`w-3.5 h-3.5 text-slate-600 transition-all group-hover:text-indigo-400 shrink-0 self-center ${
-                          isSelected ? 'translate-x-0.5 text-indigo-400' : ''
-                        }`} />
-                      </motion.div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Travel Rules advisories board */}
-            <Advisories advisories={ADVISORIES} />
-          </section>
-
-          {/* Right Panel: Map deck and Incident submit log */}
-          <section className="lg:col-span-7 space-y-5">
-            
-            {/* Elegant Map Deck Layout Card */}
-            <div className="rounded-2xl border border-slate-850 overflow-hidden shadow-xl bg-slate-900 flex flex-col justify-between">
-              
-              {/* Map Deck Header */}
-              <div className="p-4 bg-slate-950/60 border-b border-slate-855 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 z-10">
-                <div className="flex items-center gap-2">
-                  <div className="p-1 px-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-450 font-mono text-[9px] font-bold rounded flex items-center gap-1 uppercase tracking-wider">
-                    <Map className="w-3.5 h-3.5" /> GPS Render
-                  </div>
-                  <h3 className="text-xs font-semibold text-slate-300">NH 766 Mountain pass Interactive</h3>
-                </div>
-
-                {/* Satellite VS vector Toggle selection tabs */}
-                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-850">
-                  <button
-                    onClick={() => setActiveMapType('vector')}
-                    className={`text-[9px] px-2.5 py-1.5 rounded-lg font-bold font-mono uppercase tracking-wider transition-all cursor-pointer ${
-                      activeMapType === 'vector'
-                        ? 'bg-slate-850 text-white'
-                        : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    Schematic view
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (!hasValidKey) {
-                        setShowConfigModal(true);
-                      } else {
-                        setActiveMapType('satellite');
-                      }
-                    }}
-                    className={`text-[9px] px-2.5 py-1.5 rounded-lg font-bold font-mono uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 ${
-                      activeMapType === 'satellite'
-                        ? 'bg-slate-855 text-indigo-300 border border-indigo-500/10 shadow'
-                        : 'text-slate-500 hover:text-slate-300'
-                    }`}
-                  >
-                    Satellite Map
-                    {!hasValidKey && <span className="h-1.5 w-1.5 bg-yellow-450 rounded-full animate-pulse" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Core Map Stage (Conditional Sat vs Vector) */}
-              <div className="p-0 bg-slate-950">
-                {activeMapType === 'satellite' && hasValidKey ? (
-                  <GhatGoogleMap
-                    locations={locations}
-                    selectedLocation={selectedLocation}
-                    onSelectLocation={handleSelectLocation}
-                    apiKey={API_KEY}
-                  />
-                ) : (
-                  <OfflineChuramMap
-                    locations={locations}
-                    selectedId={selectedLocationId}
-                    onSelectLocation={handleSelectLocation}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Quick Dispatch Contacts Desk */}
-            <RescueDesk />
-
-            {/* Incident Alert Form box */}
-            <ReportForm
-              locations={locations}
-              onAddReport={handleAddReport}
-            />
-
-            {/* Incident alerts timeline */}
-            <IncidentTimeline
-              incidents={incidents}
-              onUpvote={handleUpvote}
-            />
-
-          </section>
-
-        </main>
-
-        {/* Footer */}
-        <footer className="mt-14 pt-6 border-t border-slate-900 text-center text-xs text-slate-550 font-mono">
-          <p>NHK NH766 Thamarassery Wayanad Churam Traffic Desk • Kozhikode - Wayanad Border, Kerala</p>
-          <p className="mt-1 text-[10px] text-slate-650">A beautiful informational Codex. Real-time simulated indicators recalculate dynamically.</p>
-        </footer>
-
-      </div>
-
-      {/* Google Maps API configuration modal helpful drawer */}
-      <AnimatePresence>
-        {showConfigModal && (
-          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="max-w-[450px] w-full p-6 rounded-2xl bg-slate-900 border border-slate-800 text-slate-200 relative shadow-2xl"
-            >
-              <div className="mx-auto w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center mb-4 text-indigo-400">
-                <Compass className="w-5 h-5 animate-spin-slow" />
-              </div>
-
-              <h3 className="text-base font-bold text-white text-center font-display mb-1">
-                How to activate premium Google Satellite Maps
-              </h3>
-              <p className="text-slate-400 text-[11px] text-center mb-4 leading-relaxed">
-                The satellite maps require a Google Cloud Maps javascript API key configured inside your platform environment.
-              </p>
-
-              <div className="space-y-3 font-sans text-xs">
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-850">
-                  <span className="text-[9px] font-mono text-indigo-400 font-bold uppercase tracking-wider block mb-1">STEP 1. Retrieve Credential</span>
-                  <a
-                    href="https://console.cloud.google.com/google/maps-apis/start?utm_campaign=gmp-code-assist-ais"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] text-indigo-300 hover:underline inline-flex items-center gap-1 font-semibold"
-                  >
-                    Establish your credential on Google Cloud Console <ChevronRight className="w-3 h-3" />
-                  </a>
-                </div>
-
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-850">
-                  <span className="text-[9px] font-mono text-indigo-400 font-bold uppercase tracking-wider block mb-1">STEP 2. Bind Secret key in workspace</span>
-                  <ul className="list-decimal list-inside space-y-1.5 text-xxs font-medium text-slate-300">
-                    <li>Open <b>Settings</b> represented by the <strong className="text-indigo-300">⚙️ gear</strong> at the top right header.</li>
-                    <li>Toggle to the <b>Secrets</b> panel list.</li>
-                    <li>Set up a variable named <code>GOOGLE_MAPS_PLATFORM_KEY</code>.</li>
-                    <li>Paste your key code as value and click Add.</li>
-                  </ul>
-                </div>
+              {/* REPORTER NAME */}
+              <div>
+                <label className="block text-xxs font-black text-slate-450 uppercase tracking-widest mb-1.5">
+                  {trans.formLabelWho}
+                </label>
+                <input
+                  type="text"
+                  value={formReporter}
+                  onChange={(e) => setFormReporter(e.target.value)}
+                  placeholder={trans.formPlaceholderWho}
+                  className="w-full bg-[#f8fafc] border border-slate-250 text-slate-900 rounded-xl p-3.5 text-xs font-semibold focus:bg-white"
+                />
               </div>
 
               <button
-                onClick={() => setShowConfigModal(false)}
-                className="mt-5 w-full bg-indigo-650 hover:bg-indigo-700 p-2.5 font-bold font-mono text-[10px] text-white uppercase rounded-xl transition-all cursor-pointer shadow-md"
+                type="submit"
+                className="w-full h-13 bg-[#f59e0b] hover:bg-[#d97706] active:bg-[#b45309] text-slate-950 font-black text-sm rounded-2xl transition-all flex items-center justify-center gap-2 shadow cursor-pointer uppercase tracking-wider"
               >
-                Dismiss & Continue Sandbox Simulation
+                <Send className="w-5 h-5 shrink-0" />
+                <span>{trans.formSubmit}</span>
               </button>
-            </motion.div>
+
+            </form>
           </div>
-        )}
-      </AnimatePresence>
+
+          {/* SIMPLIFY REALTIME RECENT BLOCK ALERTS TIMELINE */}
+          <div className="space-y-6">
+            
+            {/* Direct speed emergency help tools dialer */}
+            <div className="p-5 md:p-6 bg-rose-50 border-2 border-rose-250 rounded-3xl shadow-xs">
+              <h3 className="text-red-950 text-md font-black uppercase tracking-wider mb-1">
+                🚨 {trans.emergencyHeader}
+              </h3>
+              <p className="text-rose-800 text-xs mb-4">
+                {useMalayalam ? 'തത്സമയം സഹായത്തിനായി ഈ നമ്പറുകളിൽ ക്ലിക്ക് ചെയ്യ്താൽ മതിയാകും.' : 'Just click any red phone number to call directly from your smartphone.'}
+              </p>
+
+              <div className="space-y-2">
+                {[
+                  { id: '1', name: trans.policeLabel, num: '9447025100' },
+                  { id: '2', name: trans.rescueLabel, num: '04952231210' },
+                  { id: '3', name: trans.medicalLabel, num: '9447600100' }
+                ].map((sos) => (
+                  <a
+                    key={sos.id}
+                    href={`tel:${sos.num}`}
+                    className="p-3 bg-white hover:bg-rose-100 border border-rose-200 rounded-2xl flex items-center justify-between transition-all font-mono text-xs font-semibold cursor-pointer text-slate-800 focus:ring-3 focus:ring-rose-250 group"
+                  >
+                    <span className="font-sans font-extrabold text-slate-850 truncate max-w-[190px] group-hover:text-red-800">
+                      {sos.name}
+                    </span>
+                    <span className="flex items-center gap-1 bg-red-600 text-white p-2 px-3 rounded-lg font-bold group-hover:bg-red-700">
+                      <PhoneCall className="w-3 h-3 text-white animate-bounce" />
+                      {sos.num}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* Simulated Live Broadcast Stream logs for Google Search relevance */}
+            <div className="p-5 md:p-6 bg-white border border-slate-200 rounded-3xl shadow-xs">
+              <h4 className="text-slate-900 text-sm font-black uppercase tracking-wider mb-3">
+                💬 {useMalayalam ? 'വഴിയാത്രക്കാരുടെ തത്സമയ അപ്ഡേറ്റുകൾ:' : 'Commuter Verified Stream Logs:'}
+              </h4>
+
+              <div className="space-y-3.5 max-h-[210px] overflow-y-auto pr-1">
+                {incidents.length === 0 ? (
+                  <p className="text-slate-450 text-xs text-center py-6">All clear! No live reports recorded.</p>
+                ) : (
+                  incidents.map((inc) => (
+                    <article key={inc.id} className="p-3.5 bg-slate-50 border border-slate-205 rounded-xl text-xs space-y-1">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <strong className="text-indigo-800 text-[11px]">📍 {inc.locationName}</strong>
+                        <span className="text-[9px] font-mono text-slate-450">{inc.timestamp}</span>
+                      </div>
+                      <p className="font-black text-slate-950 scale-y-102 leading-tight">{inc.title}</p>
+                      <p className="text-slate-600 text-xxs font-medium leading-normal">{inc.description}</p>
+                      <p className="text-[10px] text-slate-400 font-sans pt-1 border-t border-slate-200/50">
+                        Reporter: <b>{inc.reportedBy}</b> • upvotes: {inc.upvotes}
+                      </p>
+                    </article>
+                  ))
+                )}
+              </div>
+
+              {/* Reset to normal simulation trigger */}
+              <div className="mt-4 pt-4 border-t border-slate-150 text-center">
+                <button
+                  onClick={handleResetToNormal}
+                  className="text-xxs font-mono text-slate-450 hover:text-indigo-600 border border-slate-200 rounded-lg p-2 px-3 tracking-widest cursor-pointer transition-all flex items-center justify-center gap-1.5 mx-auto hover:bg-slate-50 font-bold"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  <span>{trans.resetBtn}</span>
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* SEO FRIENDLY COMPREHENSIVE REGIONAL EXPLANATION ARTICLE */}
+        {/* Strictly compliant with organic search crawlability, using descriptive headings and normal tags */}
+        <article id="seo-regional-curation" className="p-6 md:p-8 bg-slate-200 rounded-3xl border border-slate-300">
+          <header>
+            <h3 className="text-xs font-mono font-black text-indigo-700 uppercase tracking-widest mb-1.5">
+              Live Transit Encyclopedia Database
+            </h3>
+            <h2 className="text-base md:text-lg font-black text-slate-950 mb-3 leading-tight font-display">
+              Thamarassery Churam Ghat Road National Highway 766 Kozhikode to Wayanad Route Details
+            </h2>
+          </header>
+          
+          <div className="space-y-3 text-xs md:text-[13px] text-slate-75 * leading-relaxed font-sans font-medium">
+            <p>
+              The <strong>Thamarassery Ghat Pass</strong>, locally designated as <strong>താമരശ്ശേരി ചുരം</strong> is Kerala’s most famous mountain highway pass. It resides along <strong>National Highway 766 (NH 766)</strong>, serving as the absolute primary logistical link connecting Kozhikode (Calicut) with the high-altitude district of Wayanad, and continuing forward towards Mysore and Bangalore in Karnataka. 
+            </p>
+            <p>
+              With an average elevation ascending from 75 meters at Adivaram up to 700 meters at the Lakkidi summit within only 14 kilometers, this narrow tarmac features <strong>9 extreme hairpin curves</strong>. Due to the high slope gradient of up to 1:15, heavy freight lorries and tourist vehicles occasionally face mechanical breaks on the sharp inner radii of Curve 3, Curve 5 (well-known as the Big Bend), and Curve 7. 
+            </p>
+            <p>
+              Our <strong>Churam Live companion platform</strong> was created to deliver direct, uncluttered status reports. By removing modern decorative visual panels, older citizens, local bus drivers, emergency responders, and families can easily check if any hairpins are currently blocked. This proactive status check helps reduce high vehicle build-up, allows travelers to select the alternate <strong>Kuttiady Churam</strong> or Vadakara passes early, and ensures children can follow pass maps easily.
+            </p>
+          </div>
+        </article>
+
+      </main>
+
+      {/* FOOTER WRAPPER */}
+      <footer className="mt-14 bg-slate-905 text-slate-400 py-8 border-t border-slate-300 text-center text-xs font-mono">
+        <div className="max-w-4xl mx-auto px-4 space-y-2.5">
+          <p className="font-extrabold text-slate-700">
+            Wayanad Churam Live Road Status & NH 766 Block Tracker • Kozhikode - Wayanad Border, Kerala, India.
+          </p>
+          <p className="text-[11px] text-slate-500">
+            {trans.legalFooter} • Designed with High-Contrast Accessible Text for Senior Citizens.
+          </p>
+        </div>
+      </footer>
 
     </div>
   );

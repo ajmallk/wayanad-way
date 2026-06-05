@@ -13,34 +13,34 @@ export default function Advisories({ advisories }: AdvisoriesProps) {
   const getAdvisoryIcon = (cat: TravelAdvisory['category']) => {
     switch (cat) {
       case 'restriction':
-        return <Camera className="w-4 h-4 text-orange-400" />;
+        return <Camera className="w-4 h-4 text-orange-600" />;
       case 'weather':
-        return <AlertTriangle className="w-4 h-4 text-rose-450 animate-pulse" />;
+        return <AlertTriangle className="w-4 h-4 text-rose-600 animate-pulse" />;
       default:
-        return <ShieldCheck className="w-4 h-4 text-emerald-400" />;
+        return <ShieldCheck className="w-4 h-4 text-emerald-600" />;
     }
   };
 
   const getAdvisoryColor = (cat: TravelAdvisory['category']) => {
     switch (cat) {
       case 'restriction':
-        return 'border-orange-500/25 bg-orange-950/15';
+        return 'border-orange-200 bg-orange-50 text-orange-900';
       case 'weather':
-        return 'border-rose-500/25 bg-rose-950/15';
+        return 'border-rose-200 bg-rose-50 text-rose-900';
       default:
-        return 'border-emerald-500/20 bg-emerald-950/10';
+        return 'border-emerald-200 bg-emerald-50 text-emerald-900';
     }
   };
 
   return (
-    <div id="advisory-rules-panel" className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
+    <div id="advisory-rules-panel" className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm font-sans">
       <div className="flex items-center gap-2 mb-4">
-        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+        <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-150">
           <HardHat className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-white font-display tracking-wide">Transit & Safety Rules</h2>
-          <p className="text-slate-400 text-xs text-shor">Official statutory bylaws for NH 766 pass</p>
+          <h2 className="text-lg font-bold text-slate-900 font-display tracking-wide animate-none">Transit & Safety Rules</h2>
+          <p className="text-slate-500 text-xs font-medium">Official statutory bylaws for NH 766 pass</p>
         </div>
       </div>
 
@@ -51,7 +51,7 @@ export default function Advisories({ advisories }: AdvisoriesProps) {
             <div
               key={adv.id}
               className={`border rounded-xl transition-all duration-300 ${getAdvisoryColor(adv.category)} ${
-                isExpanded ? 'ring-1 ring-indigo-500/30' : ''
+                isExpanded ? 'ring-1 ring-indigo-500/20 shadow-xs' : ''
               }`}
             >
               {/* Header toggler */}
@@ -60,16 +60,16 @@ export default function Advisories({ advisories }: AdvisoriesProps) {
                 className="w-full text-left p-3.5 flex items-center justify-between gap-3 cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="p-1 bg-slate-900 rounded-lg border border-slate-800">
+                  <div className="p-1 bg-white rounded-lg border border-slate-200/60 shadow-xxs">
                     {getAdvisoryIcon(adv.category)}
                   </div>
-                  <h3 className="text-xs font-semibold text-slate-200 hover:text-white transition-colors leading-snug">
+                  <h3 className="text-xs font-bold text-slate-800 hover:text-slate-950 transition-colors leading-snug">
                     {adv.title}
                   </h3>
                 </div>
                 <ChevronRight
-                  className={`w-4 h-4 text-slate-500 transition-transform duration-300 ${
-                    isExpanded ? 'rotate-90 text-indigo-400' : ''
+                  className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${
+                    isExpanded ? 'rotate-90 text-indigo-600' : ''
                   }`}
                 />
               </button>
@@ -84,14 +84,14 @@ export default function Advisories({ advisories }: AdvisoriesProps) {
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="p-3.5 pt-0 border-t border-slate-900/40 text-slate-300 text-xs leading-relaxed">
+                    <div className="p-3.5 pt-0 border-t border-slate-200/30 text-slate-705 text-xs leading-relaxed font-sans font-medium">
                       {adv.message}
                       
                       {/* Standard emergency hotlines for reference */}
                       {adv.category === 'weather' && (
-                        <div className="mt-2.5 p-2 bg-slate-950 font-mono text-[10px] rounded border border-slate-900 text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
-                          <span>Rescue Squad: <b className="text-white">9447025100</b></span>
-                          <span>Highway Patrol: <b className="text-white">100 / 112</b></span>
+                        <div className="mt-2.5 p-2 bg-white font-mono text-[10px] rounded border border-slate-150 text-slate-655 flex flex-wrap gap-x-4 gap-y-1 shadow-xxs">
+                          <span>Rescue Squad: <b className="text-indigo-650 font-black">9447025100</b></span>
+                          <span>Highway Patrol: <b className="text-indigo-650 font-black">100 / 112</b></span>
                         </div>
                       )}
                     </div>
@@ -103,9 +103,9 @@ export default function Advisories({ advisories }: AdvisoriesProps) {
         })}
       </div>
 
-      <div className="mt-4 p-3 bg-slate-950 border border-slate-850 rounded-xl flex items-center gap-3">
-        <Compass className="w-5 h-5 text-indigo-400 animate-spin-slow flex-shrink-0" />
-        <p className="text-[10px] text-slate-400 leading-normal">
+      <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center gap-3">
+        <Compass className="w-5 h-5 text-indigo-600 animate-spin-slow flex-shrink-0" />
+        <p className="text-[10px] text-slate-600 leading-normal font-sans font-medium">
           Wayanad Ghat climbers are required by state police laws to maintain continuous single-line queues and keep headlights on at all times under foggy sections.
         </p>
       </div>

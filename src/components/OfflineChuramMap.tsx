@@ -79,26 +79,26 @@ export default function OfflineChuramMap({
   };
 
   return (
-    <div id="vector-map-panel" className="relative p-4 md:p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden h-[540px] flex flex-col justify-between">
+    <div id="vector-map-panel" className="relative p-4 md:p-6 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden h-[540px] flex flex-col justify-between">
       {/* Absolute Ambient Grid Overlays */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:30px_30px] opacity-25" />
-      <div className="absolute -top-40 -left-40 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:30px_30px] opacity-40" />
+      <div className="absolute -top-40 -left-40 w-80 h-80 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Map Header Controls */}
       <div className="relative z-10 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <div className="p-1 px-2.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-xxs font-medium rounded-md flex items-center gap-1.5 uppercase tracking-wider">
+          <div className="p-1 px-[10px] bg-indigo-50 border border-indigo-150 text-indigo-700 font-mono text-xxs font-bold rounded flex items-center gap-1.5 uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Vector Engine Active
           </div>
-          <span className="text-xs text-slate-400">NH 766 Route Schematic</span>
+          <span className="text-xs text-slate-500">NH 766 Route Schematic</span>
         </div>
         <div className="text-right flex items-center gap-2">
           <span className="flex h-2 w-2 relative">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span className="text-xs text-emerald-400 font-mono">Telemetry Sync</span>
+          <span className="text-xs text-emerald-700 font-mono font-bold">Telemetry Sync</span>
         </div>
       </div>
 
@@ -107,40 +107,40 @@ export default function OfflineChuramMap({
         {locations.length === 0 ? (
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500 mx-auto mb-2" />
-            <span className="text-slate-400 text-sm">Synthesizing GIS route...</span>
+            <span className="text-slate-500 text-sm">Synthesizing GIS route...</span>
           </div>
         ) : (
           <svg
             viewBox="0 0 400 500"
             className="w-full h-full max-h-[380px] select-none"
-            style={{ filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.45))' }}
+            style={{ filter: 'drop-shadow(0px 4px 12px rgba(148,163,184,0.15))' }}
           >
             {/* Mountain Grid Elevation Accents */}
-            <line x1="20" y1="40" x2="380" y2="40" stroke="rgba(255,255,255,0.05)" strokeDasharray="4,4" />
-            <text x="35" y="35" className="fill-slate-500 font-mono text-[9px]">SUMMIT LAKKIDI (700m - 720m)</text>
+            <line x1="20" y1="40" x2="380" y2="40" stroke="rgba(15,23,42,0.06)" strokeDasharray="4,4" />
+            <text x="35" y="35" className="fill-slate-500 font-mono text-[9px] font-bold">SUMMIT LAKKIDI (700m - 720m)</text>
             
-            <line x1="20" y1="240" x2="380" y2="240" stroke="rgba(255,255,255,0.03)" strokeDasharray="4,4" />
-            <text x="35" y="235" className="fill-slate-500 font-mono text-[9px]">MID WAY (370m)</text>
+            <line x1="20" y1="240" x2="380" y2="240" stroke="rgba(15,23,42,0.04)" strokeDasharray="4,4" />
+            <text x="35" y="235" className="fill-slate-500 font-mono text-[9px] font-bold">MID WAY (370m)</text>
 
-            <line x1="20" y1="460" x2="380" y2="460" stroke="rgba(255,255,255,0.05)" strokeDasharray="4,4" />
-            <text x="35" y="455" className="fill-slate-500 font-mono text-[9px]">FOOTHILLS ADIVARAM (75m)</text>
+            <line x1="20" y1="460" x2="380" y2="460" stroke="rgba(15,23,42,0.06)" strokeDasharray="4,4" />
+            <text x="35" y="455" className="fill-slate-500 font-mono text-[9px] font-bold">FOOTHILLS ADIVARAM (75m)</text>
 
             {/* Inactive Shadow Route (depth layering) */}
             <path
               d={getPathData()}
               fill="none"
-              stroke="#0f172a"
+              stroke="#f1f5f9"
               strokeWidth="9"
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity="0.8"
+              opacity="0.9"
             />
             
             {/* Base Highway Asphalt Road */}
             <path
               d={getPathData()}
               fill="none"
-              stroke="#334155"
+              stroke="#cbd5e1"
               strokeWidth="6"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -172,7 +172,7 @@ export default function OfflineChuramMap({
                   stroke={segmentColor}
                   strokeWidth="3.5"
                   strokeLinecap="round"
-                  opacity={loc.status === 'clear' && nextLoc.status === 'clear' ? '0.15' : '0.8'}
+                  opacity={loc.status === 'clear' && nextLoc.status === 'clear' ? '0.35' : '0.8'}
                   className="transition-all duration-500"
                 />
               );
@@ -198,7 +198,7 @@ export default function OfflineChuramMap({
                       cy={y}
                       r="16"
                       className={`animate-ping ${statusColor}`}
-                      opacity="0.30"
+                      opacity="0.25"
                     />
                   )}
 
@@ -207,8 +207,8 @@ export default function OfflineChuramMap({
                     cx={x}
                     cy={y}
                     r={isSelected ? "9" : "6.5"}
-                    fill="#1e293b"
-                    stroke={isSelected ? "#6366f1" : "rgba(255,255,255,0.4)"}
+                    fill="#ffffff"
+                    stroke={isSelected ? "#6366f1" : "#94a3b8"}
                     strokeWidth={isSelected ? "2.5" : "1"}
                     className="transition-all duration-300 group-hover:scale-125"
                   />
@@ -229,16 +229,16 @@ export default function OfflineChuramMap({
                         y="-8"
                         width="15"
                         height="11"
-                        rx="2"
-                        fill="rgba(15, 23, 42, 0.75)"
-                        stroke="rgba(255, 255, 255, 0.1)"
-                        strokeWidth="0.5"
-                        className="group-hover:fill-slate-800"
+                        rx="2.5"
+                        fill="#ffffff"
+                        stroke="#cbd5e1"
+                        strokeWidth="0.75"
+                        className="group-hover:fill-slate-50 transition-colors"
                       />
                       <text
                         x="1.5"
-                        y="1"
-                        className="fill-slate-300 font-mono text-[8px] font-bold text-center"
+                        y="1.2"
+                        className="fill-slate-700 font-mono text-[8px] font-extrabold text-center"
                       >
                         H{loc.hairpinNumber}
                       </text>
@@ -258,34 +258,34 @@ export default function OfflineChuramMap({
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute bottom-4 left-4 right-4 bg-slate-950/95 border border-slate-800/80 p-3 rounded-xl flex items-start gap-3 backdrop-blur-md shadow-2xl z-20 pointer-events-auto"
+              className="absolute bottom-4 left-4 right-4 bg-white/95 border border-slate-200 p-3.5 rounded-xl flex items-start gap-3 backdrop-blur-md shadow-lg z-20 pointer-events-auto"
             >
               <div className={`p-2 rounded-lg flex-shrink-0 ${
-                location.status === 'blocked' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/25' :
-                location.status === 'heavy' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/25' :
-                location.status === 'slow' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/25' :
-                'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25'
+                location.status === 'blocked' ? 'bg-rose-50 text-rose-600 border border-rose-200' :
+                location.status === 'heavy' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+                location.status === 'slow' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                'bg-emerald-50 text-emerald-600 border border-emerald-200'
               }`}>
-                <MapPin className="w-5 h-5" />
+                <MapPin className="w-5 h-5 animate-bounce" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-white truncate font-display">{location.name}</h4>
-                  <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-mono font-bold tracking-wide ${
-                    location.status === 'blocked' ? 'bg-rose-900/30 text-rose-400' :
-                    location.status === 'heavy' ? 'bg-orange-950/30 text-orange-400' :
-                    location.status === 'slow' ? 'bg-amber-950/30 text-amber-500' :
-                    'bg-slate-800 text-slate-400'
+                  <h4 className="text-sm font-bold text-slate-800 truncate font-display">{location.name}</h4>
+                  <span className={`text-[10px] uppercase px-1.5 py-0.5 rounded font-mono font-extrabold tracking-wide ${
+                    location.status === 'blocked' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                    location.status === 'heavy' ? 'bg-orange-100 text-orange-700' :
+                    location.status === 'slow' ? 'bg-amber-100 text-amber-700' :
+                    'bg-slate-100 text-slate-600'
                   }`}>
                     {location.status}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-0.5 text-slate-500 text-xxs font-mono">
+                <div className="flex items-center gap-2 mt-0.5 text-slate-500 text-xxs font-mono font-medium">
                   <span>Elevation: {location.elevation}m</span>
                   <span>•</span>
                   <span>Updated: {location.lastUpdated}</span>
                 </div>
-                <p className="text-slate-300 text-xs mt-1.5 line-clamp-2 leading-relaxed">
+                <p className="text-slate-605 text-xs mt-1.5 line-clamp-2 leading-relaxed font-sans">
                   {location.details}
                 </p>
               </div>
@@ -295,27 +295,27 @@ export default function OfflineChuramMap({
       </div>
 
       {/* Mountain Pass Profile Footer */}
-      <div className="relative z-10 p-3 bg-slate-950/60 border border-slate-800/50 rounded-xl flex justify-between items-center text-xs">
-        <div className="flex items-center text-slate-400 gap-1.5">
-          <Navigation className="w-3.5 h-3.5 rotate-45 text-indigo-400" />
-          <span className="font-mono text-xxs">Compass Range</span>
+      <div className="relative z-10 p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center text-xs">
+        <div className="flex items-center text-slate-550 gap-1.5 font-bold">
+          <Navigation className="w-3.5 h-3.5 rotate-45 text-indigo-600 animate-pulse" />
+          <span className="font-mono text-xxs tracking-wider uppercase">Churam Indicator Keys</span>
         </div>
         <div className="flex gap-4">
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span className="text-xxs text-slate-400 font-mono">Clear</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-sm" />
+            <span className="text-[10px] text-slate-500 font-bold font-mono">Clear</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
-            <span className="text-xxs text-slate-400 font-mono">Slow</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shadow-sm" />
+            <span className="text-[10px] text-slate-500 font-bold font-mono">Slow</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-orange-500" />
-            <span className="text-xxs text-slate-400 font-mono">Heavy</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-orange-500 shadow-sm" />
+            <span className="text-[10px] text-slate-500 font-bold font-mono">Heavy</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
-            <span className="text-xxs text-slate-400 font-mono">Blocked</span>
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-sm animate-pulse" />
+            <span className="text-[10px] text-slate-500 font-bold font-mono">Blocked</span>
           </div>
         </div>
       </div>
